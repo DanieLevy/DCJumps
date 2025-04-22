@@ -180,7 +180,8 @@ async function initServer() {
       
       try {
         const args = [
-          '--datacos', dataco_array.join(','),
+          '--action', 'check_exists',
+          '--dataco', dataco_array.join(','),
           '--check_only', 'true'
         ];
         

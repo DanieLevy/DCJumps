@@ -9,7 +9,9 @@ import {
   ClockIcon,
   ArrowPathIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  ArrowsPointingOutIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 interface DatacoDashboardProps {
@@ -22,6 +24,10 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
   const [activeDatacoIndex, setActiveDatacoIndex] = useState(0);
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [tagData, setTagData] = useState<any[]>([]);
+  const [showAllSessions, setShowAllSessions] = useState(false);
+  const [showFullContent, setShowFullContent] = useState(false);
+  const [searchSession, setSearchSession] = useState('');
+  const [searchContent, setSearchContent] = useState('');
   
   const activeDataco = useMemo(() => {
     return dataco?.[activeDatacoIndex] || null;
@@ -47,6 +53,14 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
     }
   }, [activeDataco, activeTags.length]);
   
+  // Reset search and modal states when switching DATACO
+  useEffect(() => {
+    setShowAllSessions(false);
+    setShowFullContent(false);
+    setSearchSession('');
+    setSearchContent('');
+  }, [activeDatacoIndex]);
+  
   // Toggle tag selection
   const toggleTag = (tag: string) => {
     if (activeTags.includes(tag)) {
@@ -66,6 +80,26 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
       return dateString;
     }
   };
+
+  // Filter sessions by search term
+  const filteredSessions = useMemo(() => {
+    if (!activeDataco?.sessions || !Array.isArray(activeDataco.sessions)) return [];
+    if (!searchSession) return activeDataco.sessions;
+    
+    return activeDataco.sessions.filter(session => 
+      session.toLowerCase().includes(searchSession.toLowerCase())
+    );
+  }, [activeDataco?.sessions, searchSession]);
+
+  // Filter content by search term
+  const filteredContent = useMemo(() => {
+    if (!activeDataco?.content_sample || !Array.isArray(activeDataco.content_sample)) return [];
+    if (!searchContent) return activeDataco.content_sample;
+    
+    return activeDataco.content_sample.filter(line => 
+      line.toLowerCase().includes(searchContent.toLowerCase())
+    );
+  }, [activeDataco?.content_sample, searchContent]);
   
   if (!activeDataco) {
     return (
@@ -259,7 +293,18 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
               </div>
               
               <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-1">Sessions ({activeDataco.sessions?.length || 0})</h4>
+                <div className="flex justify-between items-center mb-1">
+                  <h4 className="text-sm font-medium text-gray-500">Sessions ({activeDataco.sessions?.length || 0})</h4>
+                  {activeDataco.sessions && activeDataco.sessions.length > 0 && (
+                    <button
+                      onClick={() => setShowAllSessions(true)}
+                      className="text-xs text-brand-600 hover:text-brand-800 flex items-center"
+                    >
+                      <ArrowsPointingOutIcon className="h-3 w-3 mr-1" />
+                      View All
+                    </button>
+                  )}
+                </div>
                 {activeDataco.sessions && activeDataco.sessions.length > 0 ? (
                   <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -277,7 +322,12 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
                         {activeDataco.sessions.length > 5 && (
                           <tr>
                             <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                              {`${activeDataco.sessions.length - 5} more sessions`}
+                              <button 
+                                onClick={() => setShowAllSessions(true)} 
+                                className="text-brand-600 hover:text-brand-800"
+                              >
+                                {`View ${activeDataco.sessions.length - 5} more sessions`}
+                              </button>
                             </td>
                           </tr>
                         )}
@@ -307,25 +357,39 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
                         {line}
                       </li>
                     ))}
-                    {activeDataco.content_truncated && (
-                      <div className="text-gray-500 mt-2">
-                        {`${activeDataco.content_sample.length - 10} more lines`}
-                      </div>
+                    {activeDataco.content_sample.length > 10 && (
+                      <li className="text-gray-500 mt-2">
+                        <button 
+                          onClick={() => setShowFullContent(true)} 
+                          className="text-brand-600 hover:text-brand-800"
+                        >
+                          {`View ${activeDataco.content_sample.length - 10} more lines`}
+                        </button>
+                      </li>
                     )}
                   </ul>
                 </div>
                 
-                <div className="flex items-center text-sm text-gray-500">
-                  {activeDataco.content_truncated ? (
-                    <ArrowPathIcon className="h-4 w-4 mr-1 text-yellow-500" />
-                  ) : (
-                    <CheckCircleIcon className="h-4 w-4 mr-1 text-green-500" />
-                  )}
-                  <span>
-                    {activeDataco.content_truncated
-                      ? 'Content preview is truncated due to size'
-                      : 'Full content preview available'}
-                  </span>
+                <div className="flex justify-between items-center text-sm text-gray-500">
+                  <div className="flex items-center">
+                    {activeDataco.content_truncated ? (
+                      <ArrowPathIcon className="h-4 w-4 mr-1 text-yellow-500" />
+                    ) : (
+                      <CheckCircleIcon className="h-4 w-4 mr-1 text-green-500" />
+                    )}
+                    <span>
+                      {activeDataco.content_truncated
+                        ? 'Content preview is truncated due to size'
+                        : 'Full content preview available'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowFullContent(true)}
+                    className="text-xs text-brand-600 hover:text-brand-800 flex items-center"
+                  >
+                    <ArrowsPointingOutIcon className="h-3 w-3 mr-1" />
+                    View Full Content
+                  </button>
                 </div>
               </div>
             ) : (
@@ -337,6 +401,121 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
           </div>
         </div>
       </div>
+      
+      {/* All Sessions Modal */}
+      {showAllSessions && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="px-4 py-5 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">All Sessions - DATACO-{activeDataco.dataco_number}</h3>
+              <button 
+                onClick={() => setShowAllSessions(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <input
+                type="text"
+                placeholder="Search sessions..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
+                value={searchSession}
+                onChange={(e) => setSearchSession(e.target.value)}
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {filteredSessions.length > 0 ? (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session Name</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredSessions.map((session) => (
+                      <tr key={session} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-500">{session}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  {searchSession ? 'No matching sessions found.' : 'No sessions available.'}
+                </div>
+              )}
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 text-right">
+              <span className="text-sm text-gray-500">
+                Showing {filteredSessions.length} of {activeDataco.sessions?.length || 0} sessions
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Full Content Modal */}
+      {showFullContent && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="px-4 py-5 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">Jump File Content - DATACO-{activeDataco.dataco_number}</h3>
+              <button 
+                onClick={() => setShowFullContent(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <input
+                type="text"
+                placeholder="Search content..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
+                value={searchContent}
+                onChange={(e) => setSearchContent(e.target.value)}
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {filteredContent.length > 0 ? (
+                <div className="font-mono text-xs bg-gray-50 p-3 rounded border border-gray-200">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 w-12">#</th>
+                        <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">Content</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredContent.map((line, index) => (
+                        <tr key={`${line}-${index}`} className="hover:bg-gray-100">
+                          <td className="px-2 py-1 text-gray-400 text-right align-top">{index + 1}</td>
+                          <td className="px-2 py-1 whitespace-pre-wrap break-words">{line}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  {searchContent ? 'No matching content found.' : 'No content available.'}
+                </div>
+              )}
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 text-right sm:flex sm:justify-between sm:items-center">
+              <span className="text-sm text-gray-500">
+                {activeDataco.content_truncated ? 
+                  'Note: Content is truncated. This is only a sample of the full content.' : 
+                  'Showing all available content.'}
+              </span>
+              <span className="text-sm text-gray-500">
+                Showing {filteredContent.length} of {activeDataco.content_sample?.length || 0} lines
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
