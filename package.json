@@ -1,0 +1,36 @@
+{
+  "name": "jumpapp",
+  "version": "1.0.0",
+  "description": "Web application for DATACO jump analysis",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "next build",
+    "start": "NODE_ENV=production node server.js",
+    "start:prod": "npm run build && npm run start"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.15",
+    "@heroicons/react": "^2.0.18",
+    "autoprefixer": "^10.4.14",
+    "axios": "^1.4.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "next": "^13.4.19",
+    "postcss": "^8.4.27",
+    "python-shell": "^5.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.7.2",
+    "tailwindcss": "^3.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.1",
+    "@types/react": "^18.2.20",
+    "nodemon": "^2.0.22",
+    "typescript": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
