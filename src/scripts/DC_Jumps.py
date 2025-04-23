@@ -1,5 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+# Ensure compatibility with Python 2.7
+from __future__ import print_function
 
 import os
 import sys
@@ -7,8 +10,28 @@ import fnmatch
 import argparse
 import json
 import logging
+import io  # For Python 2.7 compatible file handling
 from datetime import datetime
-from collections import Counter
+
+# Python 2/3 compatibility for unicode
+if sys.version_info[0] < 3:
+    def unicode(s):
+        if isinstance(s, str):
+            return s.decode('utf-8')
+        return s
+else:
+    unicode = str
+
+try:
+    from collections import Counter
+except ImportError:  # Python 2.6 and earlier
+    from collections import defaultdict
+    class Counter(defaultdict):
+        def __init__(self, iterable=None, **kwargs):
+            super(Counter, self).__init__(int, **kwargs)
+            if iterable is not None:
+                for elem in iterable:
+                    self[elem] += 1
 
 # Check Python version
 import platform
@@ -114,7 +137,7 @@ def load_dataco(dataco_number, base_dir):
             logger.debug("Processing file: {}".format(file_path))
             
             # Read and process file content
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with io.open(file_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     stripped = line.strip()
                     if stripped and not stripped.startswith("#format:"):
@@ -239,7 +262,7 @@ def merge_datacos(dataco_numbers, base_dir):
                     logger.debug("Processing file for merge: {}".format(file_path))
                     
                     # Read and process file content
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with io.open(file_path, 'r', encoding='utf-8') as f:
                         file_content = []
                         for line in f:
                             stripped = line.strip()
@@ -289,7 +312,7 @@ def merge_datacos(dataco_numbers, base_dir):
     result = {
         "success": True,
         "message": "Successfully merged {} DATACO datasets".format(len(dataco_numbers)),
-        "dataco_number": "MERGED-{}".format('-'.join(dataco_numbers)),
+        "dataco_number": "MERGED-{}".format('-'.join(str(d) for d in dataco_numbers)),
         "total_files": len(all_files),
         "processed_files": processed_files,
         "failed_files": failed_files,
@@ -327,11 +350,11 @@ def save_dataco(output_path, content=None):
             logger.debug("Created directory: {}".format(output_dir))
         
         # Write content to file
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with io.open(output_path, 'w', encoding='utf-8') as f:
             if isinstance(content, list):
-                f.write('\n'.join(content))
+                f.write(u'\n'.join(content))
             else:
-                f.write(content)
+                f.write(unicode(content) if sys.version_info[0] < 3 else content)
         
         logger.debug("Successfully saved content to {}".format(output_path))
         return {
@@ -474,7 +497,12 @@ def main():
             result = {"success": False, "error": "Unknown action: {}".format(args.action)}
         
         # Print the result as JSON
-        print(json.dumps(result))
+        if sys.version_info[0] < 3:
+            # Python 2.7 JSON handling
+            print(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+        else:
+            # Python 3.x JSON handling
+            print(json.dumps(result))
         
         return 0
     

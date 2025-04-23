@@ -188,7 +188,7 @@ async function initServer() {
       }
       
       // For now, always use test directory as requested
-      const forceTestDir = true;
+      const forceTestDir = false;
       const shouldUseTestDir = forceTestDir || useTestDir;
       
       try {
@@ -262,7 +262,7 @@ async function initServer() {
       }
       
       // Always use test directory for now as requested
-      const actualUseTestDir = true; // Force debug mode
+      const actualUseTestDir = false; // No longer force debug mode
       
       // If using test directory and not found, use mock data
       if (actualUseTestDir && !fs.existsSync(TEST_DIR)) {
