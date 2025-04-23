@@ -3,12 +3,18 @@
 
 import os
 import sys
-import glob
+import fnmatch
 import argparse
 import json
 import logging
 from datetime import datetime
 from collections import Counter
+
+# Check Python version
+import platform
+python_version = platform.python_version_tuple()
+python_version_info = "Python {}.{}.{}".format(*python_version)
+print("Running with {}".format(python_version_info))
 
 # Set up logging
 logging.basicConfig(
@@ -54,15 +60,17 @@ def find_dataco_files(dataco_number, base_dir):
     
     logger.debug("Searching for DATACO-{} in {}".format(dataco_number, base_dir))
     
-    # Recursive search pattern
-    pattern = os.path.join(base_dir, '**', "*DATACO-{}.jump".format(dataco_number))
+    # Search pattern for files
+    pattern = "*DATACO-{}.jump".format(dataco_number)
+    files = []
     
-    # Use glob with recursive=True
-    # Note: Requires Python 3.5+
-    files = glob.glob(pattern, recursive=True)
-    
-    # Filter out potential directory matches if pattern somehow matches a directory
-    files = [f for f in files if os.path.isfile(f)]
+    # Walk the directory tree instead of using glob's recursive parameter
+    for root, _, filenames in os.walk(base_dir):
+        for filename in filenames:
+            if fnmatch.fnmatch(filename, pattern):
+                file_path = os.path.join(root, filename)
+                if os.path.isfile(file_path):
+                    files.append(file_path)
     
     logger.debug("Found {} files for DATACO-{}".format(len(files), dataco_number))
     return files
