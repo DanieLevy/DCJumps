@@ -40,23 +40,15 @@ function runPythonScript(args) {
   });
 
   return new Promise((resolve, reject) => {
-    // Determine which Python command to use
-    let pythonCommand = 'python3.13';
-    if (fs.existsSync(PYTHON_COMMAND_FILE)) {
-      pythonCommand = fs.readFileSync(PYTHON_COMMAND_FILE, 'utf8').trim();
-    } else {
-      // Try to find Python executable
-      try {
-        // Check which Python version is available
-        const pythonVersionCheck = spawn('python', ['--version']);
-        pythonVersionCheck.on('error', () => {
-          logDebug('PYTHON_CONFIG', 'Using python3.13 as default');
-          fs.writeFileSync(PYTHON_COMMAND_FILE, 'python3.13');
-        });
-      } catch (e) {
-        logDebug('PYTHON_CONFIG', 'Error checking Python version, using python3.13');
-        fs.writeFileSync(PYTHON_COMMAND_FILE, 'python3.13');
-      }
+    // Always use python3 as the command
+    let pythonCommand = 'python3';
+    
+    // Write the Python command to file for reference
+    try {
+      fs.writeFileSync(PYTHON_COMMAND_FILE, pythonCommand);
+      logDebug('PYTHON_CONFIG', `Set Python command to ${pythonCommand}`);
+    } catch (e) {
+      logDebug('PYTHON_CONFIG', 'Error writing to .python-command file', e);
     }
     
     logDebug('PYTHON', `Executing Python script with command: ${pythonCommand}`, { args });

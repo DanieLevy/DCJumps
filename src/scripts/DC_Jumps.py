@@ -1,8 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-# Ensure compatibility with Python 2.7
-from __future__ import print_function
 
 import os
 import sys
@@ -10,34 +7,14 @@ import fnmatch
 import argparse
 import json
 import logging
-import io  # For Python 2.7 compatible file handling
 from datetime import datetime
-
-# Python 2/3 compatibility for unicode
-if sys.version_info[0] < 3:
-    def unicode(s):
-        if isinstance(s, str):
-            return s.decode('utf-8')
-        return s
-else:
-    unicode = str
-
-try:
-    from collections import Counter
-except ImportError:  # Python 2.6 and earlier
-    from collections import defaultdict
-    class Counter(defaultdict):
-        def __init__(self, iterable=None, **kwargs):
-            super(Counter, self).__init__(int, **kwargs)
-            if iterable is not None:
-                for elem in iterable:
-                    self[elem] += 1
+from collections import Counter
 
 # Check Python version
 import platform
 python_version = platform.python_version_tuple()
 python_version_info = "Python {}.{}.{}".format(*python_version)
-print("Running with {}".format(python_version_info))
+print(f"Running with {python_version_info}")
 
 # Set up logging
 logging.basicConfig(
@@ -78,16 +55,16 @@ def find_dataco_files(dataco_number, base_dir):
     """Find all jump files for a given DATACO number, searching recursively."""
     # Ensure the base directory exists
     if not os.path.isdir(base_dir):
-        logger.warning("Base directory not found or not a directory: {}".format(base_dir))
+        logger.warning(f"Base directory not found or not a directory: {base_dir}")
         return []
     
-    logger.debug("Searching for DATACO-{} in {}".format(dataco_number, base_dir))
+    logger.debug(f"Searching for DATACO-{dataco_number} in {base_dir}")
     
-    # Search pattern for files
-    pattern = "*DATACO-{}.jump".format(dataco_number)
+    # Recursive search pattern for Python 3.5+
+    pattern = f"*DATACO-{dataco_number}.jump"
     files = []
     
-    # Walk the directory tree instead of using glob's recursive parameter
+    # Walk the directory tree - works on all Python versions
     for root, _, filenames in os.walk(base_dir):
         for filename in filenames:
             if fnmatch.fnmatch(filename, pattern):
@@ -95,7 +72,7 @@ def find_dataco_files(dataco_number, base_dir):
                 if os.path.isfile(file_path):
                     files.append(file_path)
     
-    logger.debug("Found {} files for DATACO-{}".format(len(files), dataco_number))
+    logger.debug(f"Found {len(files)} files for DATACO-{dataco_number}")
     return files
 
 def extract_tag_from_line(line):
@@ -112,14 +89,14 @@ def extract_tag_from_line(line):
 
 def load_dataco(dataco_number, base_dir):
     """Load and process a single DATACO dataset."""
-    logger.debug("Loading DATACO-{} from {}".format(dataco_number, base_dir))
+    logger.debug(f"Loading DATACO-{dataco_number} from {base_dir}")
     files = find_dataco_files(dataco_number, base_dir)
     
     if not files:
-        logger.warning("No files found for DATACO-{} in {}".format(dataco_number, base_dir))
+        logger.warning(f"No files found for DATACO-{dataco_number} in {base_dir}")
         return {
             "success": False,
-            "error": "No files found for DATACO-{}".format(dataco_number)
+            "error": f"No files found for DATACO-{dataco_number}"
         }
     
     # Process all files
@@ -131,13 +108,13 @@ def load_dataco(dataco_number, base_dir):
         try:
             # Extract session name from filename
             filename = os.path.basename(file_path)
-            session_name = filename.split("_DATACO-{}".format(dataco_number))[0]
+            session_name = filename.split(f"_DATACO-{dataco_number}")[0]
             session_names.add(session_name)
             
-            logger.debug("Processing file: {}".format(file_path))
+            logger.debug(f"Processing file: {file_path}")
             
             # Read and process file content
-            with io.open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     stripped = line.strip()
                     if stripped and not stripped.startswith("#format:"):
@@ -146,7 +123,7 @@ def load_dataco(dataco_number, base_dir):
                         if tag:
                             tag_counter[tag] += 1
         except Exception as e:
-            logger.error("Error processing file {}: {}".format(file_path, str(e)))
+            logger.error(f"Error processing file {file_path}: {str(e)}")
     
     # Generate response
     now = datetime.now()
@@ -169,12 +146,12 @@ def load_dataco(dataco_number, base_dir):
         "content_truncated": len(all_content) > 100
     }
     
-    logger.debug("Successfully loaded DATACO-{}: {} files, {} events".format(dataco_number, len(files), len(all_content)))
+    logger.debug(f"Successfully loaded DATACO-{dataco_number}: {len(files)} files, {len(all_content)} events")
     return result
 
 def compare_datacos(dataco_numbers, base_dir):
     """Compare multiple DATACO datasets."""
-    logger.debug("Comparing DATACOs: {}".format(dataco_numbers))
+    logger.debug(f"Comparing DATACOs: {dataco_numbers}")
     
     if len(dataco_numbers) < 2:
         logger.error("At least two DATACO numbers are required for comparison")
@@ -215,7 +192,7 @@ def compare_datacos(dataco_numbers, base_dir):
             unique = dataset_tags - others_tags
             unique_tags[dataco] = list(unique)
     
-    logger.debug("Comparison completed: {} datasets, {} common tags".format(len(datasets), len(common_tags)))
+    logger.debug(f"Comparison completed: {len(datasets)} datasets, {len(common_tags)} common tags")
     return {
         "datasets": datasets,
         "common_tags": list(common_tags),
@@ -225,7 +202,7 @@ def compare_datacos(dataco_numbers, base_dir):
 
 def merge_datacos(dataco_numbers, base_dir):
     """Merge multiple DATACO datasets."""
-    logger.debug("Merging DATACOs: {}".format(dataco_numbers))
+    logger.debug(f"Merging DATACOs: {dataco_numbers}")
     
     if len(dataco_numbers) < 2:
         logger.error("At least two DATACO numbers are required for merging")
@@ -247,7 +224,7 @@ def merge_datacos(dataco_numbers, base_dir):
         try:
             files = find_dataco_files(dataco, base_dir)
             if not files:
-                logger.warning("No files found for DATACO-{} in {}".format(dataco, base_dir))
+                logger.warning(f"No files found for DATACO-{dataco} in {base_dir}")
                 continue
                 
             all_files.extend(files)
@@ -256,13 +233,13 @@ def merge_datacos(dataco_numbers, base_dir):
                 try:
                     # Extract session name from filename
                     filename = os.path.basename(file_path)
-                    session_name = filename.split("_DATACO-{}".format(dataco))[0]
+                    session_name = filename.split(f"_DATACO-{dataco}")[0]
                     session_names.add(session_name)
                     
-                    logger.debug("Processing file for merge: {}".format(file_path))
+                    logger.debug(f"Processing file for merge: {file_path}")
                     
                     # Read and process file content
-                    with io.open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, 'r', encoding='utf-8') as f:
                         file_content = []
                         for line in f:
                             stripped = line.strip()
@@ -283,15 +260,15 @@ def merge_datacos(dataco_numbers, base_dir):
                                     dates.append(datetime(year, month, day))
                                     break
                         except Exception as e:
-                            logger.warning("Could not parse date from filename {}: {}".format(filename, str(e)))
+                            logger.warning(f"Could not parse date from filename {filename}: {str(e)}")
                     
                     all_content.extend(file_content)
                     processed_files += 1
                 except Exception as e:
-                    logger.error("Error processing file {}: {}".format(file_path, str(e)))
+                    logger.error(f"Error processing file {file_path}: {str(e)}")
                     failed_files += 1
         except Exception as e:
-            logger.error("Error processing DATACO-{}: {}".format(dataco, str(e)))
+            logger.error(f"Error processing DATACO-{dataco}: {str(e)}")
     
     if not all_content:
         logger.error("No content found in any of the DATACO files")
@@ -311,8 +288,8 @@ def merge_datacos(dataco_numbers, base_dir):
     # Generate merged data response
     result = {
         "success": True,
-        "message": "Successfully merged {} DATACO datasets".format(len(dataco_numbers)),
-        "dataco_number": "MERGED-{}".format('-'.join(str(d) for d in dataco_numbers)),
+        "message": f"Successfully merged {len(dataco_numbers)} DATACO datasets",
+        "dataco_number": f"MERGED-{'-'.join(dataco_numbers)}",
         "total_files": len(all_files),
         "processed_files": processed_files,
         "failed_files": failed_files,
@@ -328,12 +305,12 @@ def merge_datacos(dataco_numbers, base_dir):
         "all_content": complete_content
     }
     
-    logger.debug("Merge completed: {} datasets with {} events".format(len(dataco_numbers), result['event_count']))
+    logger.debug(f"Merge completed: {len(dataco_numbers)} datasets with {result['event_count']} events")
     return result
 
 def save_dataco(output_path, content=None):
     """Save content to a file."""
-    logger.debug("Saving content to {}".format(output_path))
+    logger.debug(f"Saving content to {output_path}")
     
     if not content:
         logger.error("No content provided to save")
@@ -347,32 +324,32 @@ def save_dataco(output_path, content=None):
         output_dir = os.path.dirname(output_path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
-            logger.debug("Created directory: {}".format(output_dir))
+            logger.debug(f"Created directory: {output_dir}")
         
         # Write content to file
-        with io.open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             if isinstance(content, list):
-                f.write(u'\n'.join(content))
+                f.write('\n'.join(content))
             else:
-                f.write(unicode(content) if sys.version_info[0] < 3 else content)
+                f.write(str(content))
         
-        logger.debug("Successfully saved content to {}".format(output_path))
+        logger.debug(f"Successfully saved content to {output_path}")
         return {
             "success": True,
-            "message": "Content saved to {}".format(output_path),
+            "message": f"Content saved to {output_path}",
             "outputPath": output_path
         }
     except Exception as e:
-        logger.error("Error saving content to {}: {}".format(output_path, str(e)))
+        logger.error(f"Error saving content to {output_path}: {str(e)}")
         return {
             "success": False,
-            "error": "Failed to save content: {}".format(str(e)),
+            "error": f"Failed to save content: {str(e)}",
             "outputPath": output_path
         }
 
 def check_dataco_exists(dataco_numbers, base_dir):
     """Check if files exist for given DATACO numbers."""
-    logger.debug("Checking existence of DATACOs: {} in {}".format(dataco_numbers, base_dir))
+    logger.debug(f"Checking existence of DATACOs: {dataco_numbers} in {base_dir}")
     
     if not dataco_numbers:
         logger.error("No DATACO numbers provided for check")
@@ -391,7 +368,7 @@ def check_dataco_exists(dataco_numbers, base_dir):
         if results[dataco]:
             any_exists = True
     
-    logger.debug("Check completed: {}".format(any_exists))
+    logger.debug(f"Check completed: {any_exists}")
     return {
         "success": True,
         "exists": any_exists,
@@ -419,19 +396,19 @@ def main():
             # Use the test directory in the current directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
             base_dir = os.path.join(os.path.dirname(os.path.dirname(script_dir)), 'TestDC')
-            logger.debug("Using test directory: {}".format(base_dir))
+            logger.debug(f"Using test directory: {base_dir}")
             
             # Create the test directory if it doesn't exist
             if not os.path.exists(base_dir):
                 os.makedirs(base_dir)
-                logger.debug("Created test directory: {}".format(base_dir))
+                logger.debug(f"Created test directory: {base_dir}")
         
-        logger.debug("Using base directory: {}".format(base_dir))
+        logger.debug(f"Using base directory: {base_dir}")
         
         # Action requires DATACO number(s)
         if args.action in ['load', 'compare', 'merge', 'check_exists'] and not args.dataco:
-            logger.error("DATACO number is required for {} action".format(args.action))
-            result = {"success": False, "error": "DATACO number is required for {} action".format(args.action)}
+            logger.error(f"DATACO number is required for {args.action} action")
+            result = {"success": False, "error": f"DATACO number is required for {args.action} action"}
         
         # Split comma-separated DATACO numbers
         elif args.action in ['load', 'compare', 'merge', 'check_exists']:
@@ -465,7 +442,7 @@ def main():
                         content_to_save.append("#format: trackfile camera frameIDStartFrame tag")
                     
                     # Log saving information
-                    logger.debug("Saving merged content to {} ({} lines)".format(args.output, len(content_to_save)))
+                    logger.debug(f"Saving merged content to {args.output} ({len(content_to_save)} lines)")
                     
                     # Save the merged content
                     save_result = save_dataco(args.output, content_to_save)
@@ -479,7 +456,7 @@ def main():
             elif args.action == 'check_exists':
                 result = check_dataco_exists(dataco_numbers, base_dir)
             else:
-                result = {"success": False, "error": "Unknown action: {}".format(args.action)}
+                result = {"success": False, "error": f"Unknown action: {args.action}"}
         
         # Save action
         elif args.action == 'save':
@@ -494,20 +471,15 @@ def main():
                 result = save_dataco(args.output, sample_content)
         
         else:
-            result = {"success": False, "error": "Unknown action: {}".format(args.action)}
+            result = {"success": False, "error": f"Unknown action: {args.action}"}
         
         # Print the result as JSON
-        if sys.version_info[0] < 3:
-            # Python 2.7 JSON handling
-            print(json.dumps(result, ensure_ascii=False).encode('utf-8'))
-        else:
-            # Python 3.x JSON handling
-            print(json.dumps(result))
+        print(json.dumps(result))
         
         return 0
     
     except Exception as e:
-        logger.exception("Unhandled exception: {}".format(str(e)))
+        logger.exception(f"Unhandled exception: {str(e)}")
         print(json.dumps({
             "success": False, 
             "error": str(e),
