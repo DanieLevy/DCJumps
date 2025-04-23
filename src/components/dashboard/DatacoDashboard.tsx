@@ -261,6 +261,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
           <h3 className="text-lg font-medium leading-6 text-gray-900">Jump Data Explorer</h3>
           <div className="flex space-x-2">
             <button 
+              key="filter-projects"
               onClick={() => setFilterView(filterView === 'projects' ? '' : 'projects')}
               className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${
                 filterView === 'projects' 
@@ -272,6 +273,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
               Projects
             </button>
             <button 
+              key="filter-vehicles"
               onClick={() => setFilterView(filterView === 'vehicles' ? '' : 'vehicles')}
               className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${
                 filterView === 'vehicles' 
@@ -283,6 +285,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
               Vehicles
             </button>
             <button 
+              key="filter-dates"
               onClick={() => setFilterView(filterView === 'dates' ? '' : 'dates')}
               className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${
                 filterView === 'dates' 
@@ -369,6 +372,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
                       <tr>
                         <td colSpan={5} className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">
                           <button 
+                            key="view-more-events"
                             onClick={() => setShowFullContent(true)} 
                             className="text-brand-600 hover:text-brand-800"
                           >
@@ -400,7 +404,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
             <div className="max-h-96 overflow-y-auto pr-2">
               <ul className="space-y-2">
                 {tagData.slice(0, 20).map((tag, index) => (
-                  <li key={tag.name} className="flex justify-between items-center">
+                  <li key={`${tag.name}-${index}`} className="flex justify-between items-center">
                     <div className="flex items-center">
                       <input
                         type="checkbox"
@@ -468,6 +472,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
                   <h4 className="text-sm font-medium text-gray-500">Sessions ({activeDataco.sessions?.length || 0})</h4>
                   {activeDataco.sessions && activeDataco.sessions.length > 0 && (
                     <button
+                      key="view-all-sessions"
                       onClick={() => setShowAllSessions(true)}
                       className="text-xs text-brand-600 hover:text-brand-800 flex items-center"
                     >
@@ -494,6 +499,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
                           <tr>
                             <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                               <button 
+                                key="view-more-sessions"
                                 onClick={() => setShowAllSessions(true)} 
                                 className="text-brand-600 hover:text-brand-800"
                               >
@@ -531,6 +537,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
                     {activeDataco.content_sample.length > 10 && (
                       <li className="text-gray-500 mt-2">
                         <button 
+                          key="view-more-content"
                           onClick={() => setShowFullContent(true)} 
                           className="text-brand-600 hover:text-brand-800"
                         >
@@ -555,6 +562,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
                     </span>
                   </div>
                   <button
+                    key="view-full-content"
                     onClick={() => setShowFullContent(true)}
                     className="text-xs text-brand-600 hover:text-brand-800 flex items-center"
                   >
@@ -580,6 +588,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
             <div className="px-4 py-5 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">All Sessions - DATACO-{activeDataco.dataco_number}</h3>
               <button 
+                key="close-all-sessions"
                 onClick={() => setShowAllSessions(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
@@ -633,6 +642,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
             <div className="px-4 py-5 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Jump File Content - DATACO-{activeDataco.dataco_number}</h3>
               <button 
+                key="close-full-content"
                 onClick={() => setShowFullContent(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
@@ -695,6 +705,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
             <div className="px-4 py-5 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Event Details - DATACO-{activeDataco.dataco_number}</h3>
               <button 
+                key="close-event-details"
                 onClick={() => setShowEventDetails(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
@@ -706,6 +717,7 @@ export default function DatacoDashboard({ dataco, baseDir, useTestDir = false }:
             </div>
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button
+                key="close-event-details-btn"
                 onClick={() => setShowEventDetails(false)}
                 className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
