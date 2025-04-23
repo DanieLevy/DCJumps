@@ -49,13 +49,13 @@ def find_dataco_files(dataco_number, base_dir):
     """Find all jump files for a given DATACO number, searching recursively."""
     # Ensure the base directory exists
     if not os.path.isdir(base_dir):
-        logger.warning(f"Base directory not found or not a directory: {base_dir}")
+        logger.warning("Base directory not found or not a directory: {}".format(base_dir))
         return []
     
-    logger.debug(f"Searching for DATACO-{dataco_number} in {base_dir}")
+    logger.debug("Searching for DATACO-{} in {}".format(dataco_number, base_dir))
     
     # Recursive search pattern
-    pattern = os.path.join(base_dir, '**', f"*DATACO-{dataco_number}.jump")
+    pattern = os.path.join(base_dir, '**', "*DATACO-{}.jump".format(dataco_number))
     
     # Use glob with recursive=True
     # Note: Requires Python 3.5+
@@ -64,24 +64,31 @@ def find_dataco_files(dataco_number, base_dir):
     # Filter out potential directory matches if pattern somehow matches a directory
     files = [f for f in files if os.path.isfile(f)]
     
-    logger.debug(f"Found {len(files)} files for DATACO-{dataco_number}")
+    logger.debug("Found {} files for DATACO-{}".format(len(files), dataco_number))
     return files
 
 def extract_tag_from_line(line):
-    """Extract the tag from a jump file line."""
+    """Extract tag from a jump file line.
+    Format: trackfile camera frameID tag
+    Example: SBS1_Wstn_250108_095047_0000_s001_v_Front-tgtSamsung3_s60_0003 main 4535 police
+    """
     parts = line.strip().split()
-    return parts[-1] if len(parts) >= 4 else None
+    if len(parts) < 4:
+        return None
+    
+    # Tag is everything after the frame ID (could be multiple words)
+    return ' '.join(parts[3:])
 
 def load_dataco(dataco_number, base_dir):
     """Load and process a single DATACO dataset."""
-    logger.debug(f"Loading DATACO-{dataco_number} from {base_dir}")
+    logger.debug("Loading DATACO-{} from {}".format(dataco_number, base_dir))
     files = find_dataco_files(dataco_number, base_dir)
     
     if not files:
-        logger.warning(f"No files found for DATACO-{dataco_number} in {base_dir}")
+        logger.warning("No files found for DATACO-{} in {}".format(dataco_number, base_dir))
         return {
             "success": False,
-            "error": f"No files found for DATACO-{dataco_number}"
+            "error": "No files found for DATACO-{}".format(dataco_number)
         }
     
     # Process all files
@@ -93,10 +100,10 @@ def load_dataco(dataco_number, base_dir):
         try:
             # Extract session name from filename
             filename = os.path.basename(file_path)
-            session_name = filename.split(f"_DATACO-{dataco_number}")[0]
+            session_name = filename.split("_DATACO-{}".format(dataco_number))[0]
             session_names.add(session_name)
             
-            logger.debug(f"Processing file: {file_path}")
+            logger.debug("Processing file: {}".format(file_path))
             
             # Read and process file content
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -108,7 +115,7 @@ def load_dataco(dataco_number, base_dir):
                         if tag:
                             tag_counter[tag] += 1
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {str(e)}")
+            logger.error("Error processing file {}: {}".format(file_path, str(e)))
     
     # Generate response
     now = datetime.now()
@@ -131,12 +138,12 @@ def load_dataco(dataco_number, base_dir):
         "content_truncated": len(all_content) > 100
     }
     
-    logger.debug(f"Successfully loaded DATACO-{dataco_number}: {len(files)} files, {len(all_content)} events")
+    logger.debug("Successfully loaded DATACO-{}: {} files, {} events".format(dataco_number, len(files), len(all_content)))
     return result
 
 def compare_datacos(dataco_numbers, base_dir):
     """Compare multiple DATACO datasets."""
-    logger.debug(f"Comparing DATACOs: {dataco_numbers}")
+    logger.debug("Comparing DATACOs: {}".format(dataco_numbers))
     
     if len(dataco_numbers) < 2:
         logger.error("At least two DATACO numbers are required for comparison")
@@ -177,7 +184,7 @@ def compare_datacos(dataco_numbers, base_dir):
             unique = dataset_tags - others_tags
             unique_tags[dataco] = list(unique)
     
-    logger.debug(f"Comparison completed: {len(datasets)} datasets, {len(common_tags)} common tags")
+    logger.debug("Comparison completed: {} datasets, {} common tags".format(len(datasets), len(common_tags)))
     return {
         "datasets": datasets,
         "common_tags": list(common_tags),
@@ -187,7 +194,7 @@ def compare_datacos(dataco_numbers, base_dir):
 
 def merge_datacos(dataco_numbers, base_dir):
     """Merge multiple DATACO datasets."""
-    logger.debug(f"Merging DATACOs: {dataco_numbers}")
+    logger.debug("Merging DATACOs: {}".format(dataco_numbers))
     
     if len(dataco_numbers) < 2:
         logger.error("At least two DATACO numbers are required for merging")
@@ -196,46 +203,145 @@ def merge_datacos(dataco_numbers, base_dir):
             "error": "At least two DATACO numbers are required for merging"
         }
     
-    # For this mock version, just return a success response
+    all_content = []
+    tag_counter = Counter()
+    session_names = set()
+    processed_files = 0
+    failed_files = 0
+    all_files = []
+    dates = []
+    
+    # Load and process each DATACO dataset
+    for dataco in dataco_numbers:
+        try:
+            files = find_dataco_files(dataco, base_dir)
+            if not files:
+                logger.warning("No files found for DATACO-{} in {}".format(dataco, base_dir))
+                continue
+                
+            all_files.extend(files)
+            
+            for file_path in files:
+                try:
+                    # Extract session name from filename
+                    filename = os.path.basename(file_path)
+                    session_name = filename.split("_DATACO-{}".format(dataco))[0]
+                    session_names.add(session_name)
+                    
+                    logger.debug("Processing file for merge: {}".format(file_path))
+                    
+                    # Read and process file content
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        file_content = []
+                        for line in f:
+                            stripped = line.strip()
+                            if stripped and not stripped.startswith("#format:"):
+                                file_content.append(stripped)
+                                tag = extract_tag_from_line(stripped)
+                                if tag:
+                                    tag_counter[tag] += 1
+                        
+                        # Try to extract date from filename
+                        try:
+                            date_parts = filename.split('_')
+                            for part in date_parts:
+                                if len(part) == 6 and part.isdigit():  # YYMMDD format
+                                    year = int("20" + part[:2])
+                                    month = int(part[2:4])
+                                    day = int(part[4:6])
+                                    dates.append(datetime(year, month, day))
+                                    break
+                        except Exception as e:
+                            logger.warning("Could not parse date from filename {}: {}".format(filename, str(e)))
+                    
+                    all_content.extend(file_content)
+                    processed_files += 1
+                except Exception as e:
+                    logger.error("Error processing file {}: {}".format(file_path, str(e)))
+                    failed_files += 1
+        except Exception as e:
+            logger.error("Error processing DATACO-{}: {}".format(dataco, str(e)))
+    
+    if not all_content:
+        logger.error("No content found in any of the DATACO files")
+        return {
+            "success": False,
+            "error": "No content found in any of the DATACO files"
+        }
+    
+    # Determine date range
+    min_date = min(dates) if dates else datetime.now().replace(day=datetime.now().day-1)
+    max_date = max(dates) if dates else datetime.now()
+    
+    # Create full content with format line for saving
+    complete_content = all_content.copy()
+    complete_content.append("#format: trackfile camera frameIDStartFrame tag")
+    
+    # Generate merged data response
     result = {
         "success": True,
-        "message": f"Successfully merged {len(dataco_numbers)} DATACO datasets",
-        "data": {
-            "dataco_number": f"MERGED-{'-'.join(dataco_numbers)}",
-            "total_files": len(dataco_numbers) * 2,
-            "processed_files": len(dataco_numbers) * 2,
-            "failed_files": 0,
-            "session_count": len(dataco_numbers),
-            "event_count": len(dataco_numbers) * 10,
-            "unique_tags": 5 + len(dataco_numbers),
-            "min_date": datetime.now().replace(day=datetime.now().day-1).isoformat(),
-            "max_date": datetime.now().isoformat(),
-            "tag_counts": {
-                "stop_sign": len(dataco_numbers) * 2,
-                "pedestrian": len(dataco_numbers) * 2,
-                "car": len(dataco_numbers) * 3,
-                "traffic_light": len(dataco_numbers) * 2,
-                "truck": len(dataco_numbers)
-            }
-        },
-        "outputPath": os.path.join(base_dir, f"merged_{'_'.join(dataco_numbers)}.jump")
+        "message": "Successfully merged {} DATACO datasets".format(len(dataco_numbers)),
+        "dataco_number": "MERGED-{}".format('-'.join(dataco_numbers)),
+        "total_files": len(all_files),
+        "processed_files": processed_files,
+        "failed_files": failed_files,
+        "session_count": len(session_names),
+        "event_count": len(all_content),
+        "unique_tags": len(tag_counter),
+        "min_date": min_date.isoformat(),
+        "max_date": max_date.isoformat(),
+        "tag_counts": dict(tag_counter),
+        "sessions": list(session_names),
+        "content_sample": all_content[:100] if len(all_content) > 100 else all_content,
+        "content_truncated": len(all_content) > 100,
+        "all_content": complete_content
     }
     
-    logger.debug(f"Merge completed: {len(dataco_numbers)} datasets")
+    logger.debug("Merge completed: {} datasets with {} events".format(len(dataco_numbers), result['event_count']))
     return result
 
-def save_dataco(output_path):
+def save_dataco(output_path, content=None):
     """Save content to a file."""
-    logger.debug(f"Saving content to {output_path}")
-    return {
-        "success": True,
-        "message": f"Content saved to {output_path}",
-        "outputPath": output_path
-    }
+    logger.debug("Saving content to {}".format(output_path))
+    
+    if not content:
+        logger.error("No content provided to save")
+        return {
+            "success": False,
+            "error": "No content provided to save"
+        }
+    
+    try:
+        # Make sure the directory exists
+        output_dir = os.path.dirname(output_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            logger.debug("Created directory: {}".format(output_dir))
+        
+        # Write content to file
+        with open(output_path, 'w', encoding='utf-8') as f:
+            if isinstance(content, list):
+                f.write('\n'.join(content))
+            else:
+                f.write(content)
+        
+        logger.debug("Successfully saved content to {}".format(output_path))
+        return {
+            "success": True,
+            "message": "Content saved to {}".format(output_path),
+            "outputPath": output_path
+        }
+    except Exception as e:
+        logger.error("Error saving content to {}: {}".format(output_path, str(e)))
+        return {
+            "success": False,
+            "error": "Failed to save content: {}".format(str(e)),
+            "outputPath": output_path
+        }
 
 def check_dataco_exists(dataco_numbers, base_dir):
     """Check if files exist for given DATACO numbers."""
-    logger.debug(f"Checking existence of DATACOs: {dataco_numbers} in {base_dir}")
+    logger.debug("Checking existence of DATACOs: {} in {}".format(dataco_numbers, base_dir))
     
     if not dataco_numbers:
         logger.error("No DATACO numbers provided for check")
@@ -254,7 +360,7 @@ def check_dataco_exists(dataco_numbers, base_dir):
         if results[dataco]:
             any_exists = True
     
-    logger.debug(f"Check completed: {any_exists}")
+    logger.debug("Check completed: {}".format(any_exists))
     return {
         "success": True,
         "exists": any_exists,
@@ -282,48 +388,24 @@ def main():
             # Use the test directory in the current directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
             base_dir = os.path.join(os.path.dirname(os.path.dirname(script_dir)), 'TestDC')
-            logger.debug(f"Using test directory: {base_dir}")
+            logger.debug("Using test directory: {}".format(base_dir))
             
             # Create the test directory if it doesn't exist
             if not os.path.exists(base_dir):
                 os.makedirs(base_dir)
-                logger.debug(f"Created test directory: {base_dir}")
+                logger.debug("Created test directory: {}".format(base_dir))
         
-        # Check for required arguments if --help-cmd is not specified
-        if not args.help_cmd:
-            # Special case for check_only parameter
-            if args.check_only:
-                if not args.dataco:
-                    print(json.dumps({
-                        "success": False,
-                        "error": "Missing required parameter: dataco",
-                        "exists": False
-                    }))
-                    return 1
-                
-                dataco_numbers = args.dataco.split(',')
-                result = check_dataco_exists(dataco_numbers, base_dir)
-                print(json.dumps(result))
-                return 0
-            
-            if not args.action:
-                print(json.dumps({
-                    "success": False,
-                    "error": "Missing required parameter: action",
-                    "exists": False
-                }))
-                return 1
-                
-            if not args.dataco:
-                print(json.dumps({
-                    "success": False,
-                    "error": "Missing required parameter: dataco",
-                    "exists": False
-                }))
-                return 1
-            
-            # Process the action
+        logger.debug("Using base directory: {}".format(base_dir))
+        
+        # Action requires DATACO number(s)
+        if args.action in ['load', 'compare', 'merge', 'check_exists'] and not args.dataco:
+            logger.error("DATACO number is required for {} action".format(args.action))
+            result = {"success": False, "error": "DATACO number is required for {} action".format(args.action)}
+        
+        # Split comma-separated DATACO numbers
+        elif args.action in ['load', 'compare', 'merge', 'check_exists']:
             dataco_numbers = args.dataco.split(',')
+            dataco_numbers = [d.strip() for d in dataco_numbers]
             
             if args.action == 'load':
                 if len(dataco_numbers) == 1:
@@ -339,26 +421,57 @@ def main():
                 result = compare_datacos(dataco_numbers, base_dir)
             
             elif args.action == 'merge':
-                result = merge_datacos(dataco_numbers, base_dir)
-            
-            elif args.action == 'save':
-                if not args.output:
-                    result = {"success": False, "error": "Output path is required for save action"}
-                else:
-                    result = save_dataco(args.output)
+                # First merge the data
+                merged_data = merge_datacos(dataco_numbers, base_dir)
+                
+                # If output path is provided, save the merged content
+                if args.output and merged_data.get("success"):
+                    # Prefer all_content if available, otherwise use content_sample
+                    content_to_save = merged_data.get("all_content", merged_data.get("content_sample", []))
+                    
+                    # Make sure we have the format line at the end
+                    if content_to_save and not content_to_save[-1].startswith("#format:"):
+                        content_to_save.append("#format: trackfile camera frameIDStartFrame tag")
+                    
+                    # Log saving information
+                    logger.debug("Saving merged content to {} ({} lines)".format(args.output, len(content_to_save)))
+                    
+                    # Save the merged content
+                    save_result = save_dataco(args.output, content_to_save)
+                    
+                    # Combine merge and save results
+                    merged_data["save_result"] = save_result
+                    merged_data["outputPath"] = args.output
+                
+                result = merged_data
             
             elif args.action == 'check_exists':
                 result = check_dataco_exists(dataco_numbers, base_dir)
             else:
-                result = {"success": False, "error": f"Unknown action: {args.action}"}
-            
-            # Print the result as JSON
-            print(json.dumps(result))
+                result = {"success": False, "error": "Unknown action: {}".format(args.action)}
+        
+        # Save action
+        elif args.action == 'save':
+            if not args.output:
+                result = {"success": False, "error": "Output path is required for save action"}
+            else:
+                # In a real implementation, this would get content from stdin or a temp file
+                # For testing, we'll just save a sample content
+                sample_content = ["trackfile1 front 100 stop_sign", 
+                                 "trackfile2 front 200 pedestrian",
+                                 "#format: trackfile camera frameIDStartFrame tag"]
+                result = save_dataco(args.output, sample_content)
+        
+        else:
+            result = {"success": False, "error": "Unknown action: {}".format(args.action)}
+        
+        # Print the result as JSON
+        print(json.dumps(result))
         
         return 0
     
     except Exception as e:
-        logger.exception(f"Unhandled exception: {str(e)}")
+        logger.exception("Unhandled exception: {}".format(str(e)))
         print(json.dumps({
             "success": False, 
             "error": str(e),

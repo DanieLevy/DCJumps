@@ -41,9 +41,22 @@ function runPythonScript(args) {
 
   return new Promise((resolve, reject) => {
     // Determine which Python command to use
-    let pythonCommand = 'python';
+    let pythonCommand = 'python3.13';
     if (fs.existsSync(PYTHON_COMMAND_FILE)) {
       pythonCommand = fs.readFileSync(PYTHON_COMMAND_FILE, 'utf8').trim();
+    } else {
+      // Try to find Python executable
+      try {
+        // Check which Python version is available
+        const pythonVersionCheck = spawn('python', ['--version']);
+        pythonVersionCheck.on('error', () => {
+          logDebug('PYTHON_CONFIG', 'Using python3.13 as default');
+          fs.writeFileSync(PYTHON_COMMAND_FILE, 'python3.13');
+        });
+      } catch (e) {
+        logDebug('PYTHON_CONFIG', 'Error checking Python version, using python3.13');
+        fs.writeFileSync(PYTHON_COMMAND_FILE, 'python3.13');
+      }
     }
     
     logDebug('PYTHON', `Executing Python script with command: ${pythonCommand}`, { args });
@@ -290,6 +303,67 @@ async function initServer() {
         const mockData = generateMockData(dataco);
         logDebug('API_PYTHON', 'Returning mock data', mockData);
         res.json(mockData);
+      }
+    });
+
+    // API route for comparing multiple DATACOs
+    server.get('/api/comparison', async (req, res) => {
+      logDebug('API_COMPARISON', 'Received request', req.query);
+      
+      const { dataco: datacoParam, baseDir } = req.query;
+      
+      if (!datacoParam) {
+        return res.status(400).json({ error: 'DATACO numbers are required' });
+      }
+      
+      // Parse dataco parameter - could be comma-separated list
+      const datacoNumbers = datacoParam.split(',').map(d => d.trim());
+      
+      if (datacoNumbers.length < 2) {
+        return res.status(400).json({ 
+          error: 'At least two DATACO numbers are required for comparison' 
+        });
+      }
+      
+      const shouldUseTestDir = Boolean(req.query.useTestDir === 'true');
+      const baseDirPath = shouldUseTestDir ? TEST_DIR_NAME : (baseDir || DEFAULT_BASE_DIR);
+      
+      try {
+        const args = [
+          '--action', 'compare',
+          '--dataco', datacoNumbers.join(',')
+        ];
+        
+        if (shouldUseTestDir) {
+          args.push('--test_dir');
+        } else if (baseDir) {
+          args.push('--base-dir', baseDirPath);
+        }
+        
+        logDebug('API_COMPARISON', 'Executing Python script with args', { 
+          args,
+          datacos: datacoNumbers,
+          useTestDir: shouldUseTestDir,
+          baseDirPath
+        });
+        
+        // Execute Python script to compare DATACOs
+        const data = await runPythonScript(args);
+        
+        logDebug('API_COMPARISON_SUCCESS', 'Python comparison completed', data);
+        
+        return res.status(200).json(data);
+      } catch (error) {
+        logDebug('API_COMPARISON_ERROR', 'Error executing Python script', { 
+          error: error.message,
+          datacos: datacoNumbers,
+          useTestDir: shouldUseTestDir
+        });
+        
+        return res.status(500).json({ 
+          error: 'Failed to compare DATACO data',
+          message: error.message
+        });
       }
     });
 

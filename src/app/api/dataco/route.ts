@@ -10,10 +10,27 @@ async function runPythonScript(scriptParams: string[]) {
       args: scriptParams,
     };
 
+    console.log('Running Python script with params:', scriptParams);
     const results = await PythonShell.run('DC_Jumps.py', options);
+    
     // Get the last line of output (which should be the JSON result)
     const jsonResult = results[results.length - 1];
-    return JSON.parse(jsonResult);
+    
+    try {
+      const parsed = JSON.parse(jsonResult);
+      
+      // Remove large data fields to prevent response size issues
+      if (parsed.all_content && parsed.all_content.length > 0) {
+        console.log(`Result contains ${parsed.all_content.length} content lines, removing from response`);
+        delete parsed.all_content;
+      }
+      
+      return parsed;
+    } catch (parseError) {
+      console.error('Error parsing Python script output:', parseError);
+      console.error('Raw output:', results);
+      throw new Error(`Failed to parse Python script output: ${parseError.message}`);
+    }
   } catch (error) {
     console.error('Error running Python script:', error);
     throw error;
@@ -21,25 +38,34 @@ async function runPythonScript(scriptParams: string[]) {
 }
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const dataco = searchParams.get('dataco');
-  const baseDir = searchParams.get('baseDir') || '/mobileye/DC/Voice_Tagging/';
-
-  if (!dataco) {
-    return NextResponse.json({ error: 'DATACO number is required' }, { status: 400 });
-  }
-
   try {
+    const url = new URL(request.url);
+    const dataco = url.searchParams.get('dataco');
+    const baseDir = url.searchParams.get('baseDir') || '/mobileye/DC/Voice_Tagging/';
+
+    if (!dataco) {
+      return new NextResponse(
+        JSON.stringify({ error: 'DATACO number is required' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const result = await runPythonScript([
       '--action', 'load',
       '--dataco', dataco,
       '--base-dir', baseDir
     ]);
     
-    return NextResponse.json(result);
+    return new NextResponse(
+      JSON.stringify(result),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Error fetching DATACO data:', error);
-    return NextResponse.json({ error: 'Failed to fetch DATACO data' }, { status: 500 });
+    return new NextResponse(
+      JSON.stringify({ error: 'Failed to fetch DATACO data' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
 
@@ -48,16 +74,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, datacoNumbers, baseDir, outputPath, content } = body;
     
+    console.log('POST request received:', { action, datacoNumbers, baseDir, outputPath });
+    
     if (!action) {
-      return NextResponse.json({ error: 'Action is required' }, { status: 400 });
+      return new NextResponse(
+        JSON.stringify({ error: 'Action is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
     
     if (['load', 'compare', 'merge'].includes(action) && (!datacoNumbers || !datacoNumbers.length)) {
-      return NextResponse.json({ error: 'DATACO numbers are required' }, { status: 400 });
+      return new NextResponse(
+        JSON.stringify({ error: 'DATACO numbers are required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
     
     if (action === 'save' && (!outputPath || !content)) {
-      return NextResponse.json({ error: 'Output path and content are required for save action' }, { status: 400 });
+      return new NextResponse(
+        JSON.stringify({ error: 'Output path and content are required for save action' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
     
     const scriptParams = ['--action', action];
@@ -70,19 +107,26 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    if (action === 'save') {
+    // Add output path for both save AND merge actions
+    if (['save', 'merge'].includes(action) && outputPath) {
       scriptParams.push('--output', outputPath);
-      
-      // For save action, we need to write content to a temp file and pipe it to Python
-      // This is simplified - in a real implementation we'd need to handle this differently
-      const result = await runPythonScript(scriptParams);
-      return NextResponse.json(result);
     }
     
     const result = await runPythonScript(scriptParams);
-    return NextResponse.json(result);
+    console.log('Script executed successfully, returning result');
+
+    return new NextResponse(
+      JSON.stringify(result),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Error processing request:', error);
-    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Failed to process request', 
+        message: error instanceof Error ? error.message : String(error)
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 } 
